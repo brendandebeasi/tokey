@@ -1,0 +1,26 @@
+# Build artifacts
+/target
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Rust
+**/*.rs.bk
+
+# tokey config (lives in ~/.config/tokey/, not here, but just in case)
+config.toml
+credentials.json
+daemon.log
+chrome-profiles/
