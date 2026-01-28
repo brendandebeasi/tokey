@@ -7,7 +7,9 @@ It extracts web session credentials via Chrome automation, stores them locally,
 and refreshes them automatically. Consumers (other CLI tools, scripts) call
 `tokey get <provider> [account]` to get fresh credentials on stdout.
 
-Currently supports Slack (xoxc + d cookie).
+Supported providers:
+- **Slack** -- xoxc + d cookie via Chrome session extraction
+- **Google** -- OAuth 2.0 access + refresh tokens (Gmail, Calendar)
 
 ## Build Commands
 
@@ -33,12 +35,14 @@ src/
     commands.rs           # handler fn per CLI command + daemon management
   provider/
     mod.rs               # Provider trait, get_provider() registry
-    slack.rs             # SlackProvider -- wires chrome_auth into the trait
+    slack.rs             # SlackProvider -- Chrome session extraction
+    google.rs            # GoogleProvider -- OAuth 2.0 with refresh tokens
   auth/
     mod.rs               # re-exports
     chrome_auth.rs       # Chrome automation: extract tokens from localStorage
     browser_auth.rs      # HTML-based manual extraction (alternative flow)
-    oauth.rs             # OAuth 2.0 flow (kept, not primary path)
+    google_oauth.rs      # Google OAuth 2.0 flow with PKCE
+    oauth.rs             # Slack OAuth 2.0 flow (kept, not primary path)
     pkce.rs              # PKCE challenge generation
   storage/
     mod.rs               # re-exports
@@ -74,6 +78,13 @@ New providers implement this trait. `get_provider(name)` returns the right impl.
 - `refresh()` -- headless Chrome, reuses existing profile/session cookie
 - `validate()` -- calls `slack.com/api/auth.test`
 
+**GoogleProvider** (`provider/google.rs`):
+- `authenticate()` -- opens browser to Google OAuth consent, localhost callback
+- `refresh()` -- uses refresh_token to get new access_token (no browser)
+- `validate()` -- calls userinfo endpoint to verify token
+- Uses Thunderbird's public OAuth credentials (client_id + client_secret)
+- Access tokens expire in 1 hour; refresh tokens are long-lived
+
 ### Data Flow
 
 ```
@@ -88,6 +99,20 @@ tokey add slack --label work
 tokey get slack work
   -> check is_expired (>30 days?)
   -> if expired: SlackProvider::refresh() (headless Chrome)
+  -> CredentialStore::get_credential()
+  -> print JSON to stdout
+
+tokey add google --label personal
+  -> GoogleProvider::authenticate()
+    -> google_oauth::authenticate(scopes)
+    -> Browser opens to Google OAuth consent
+    -> User authorizes, redirected to localhost:8484/callback
+    -> Exchange auth code for access_token + refresh_token
+  -> CredentialStore::save_account() writes config.toml + credentials.json
+
+tokey get google personal
+  -> check expires_at (access token TTL)
+  -> if expired: GoogleProvider::refresh() (uses refresh_token, no browser)
   -> CredentialStore::get_credential()
   -> print JSON to stdout
 

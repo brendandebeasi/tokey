@@ -3,7 +3,9 @@
 CLI credential manager for apps without SSO. Extracts, stores, and refreshes
 web session credentials so other tools can consume them.
 
-Currently supports **Slack** (xoxc + d cookie tokens via Chrome session extraction).
+Supported providers:
+- **Slack** -- xoxc + d cookie tokens via Chrome session extraction
+- **Google** -- OAuth 2.0 for Gmail, Calendar (uses Thunderbird's public OAuth credentials)
 
 ## Quick Start
 
@@ -15,11 +17,16 @@ cp target/release/tokey /usr/local/bin/
 # Add a Slack account (opens Chrome, log in normally)
 tokey add slack --label work
 
+# Add a Google account (opens browser for OAuth consent)
+tokey add google --label personal
+
 # Get credentials as JSON
 tokey get slack work
+tokey get google personal
 
-# Get just the token
+# Get just a specific field
 tokey get slack work -f token
+tokey get google personal -f access_token
 
 # Check credential health
 tokey status
@@ -30,6 +37,8 @@ tokey daemon install
 
 ## How It Works
 
+### Slack
+
 1. `tokey add slack` launches a real Chrome window pointed at `app.slack.com`
 2. You log in normally -- SSO, password, whatever your workspace uses
 3. tokey extracts `xoxc-*` tokens from localStorage and the `d=xoxd-*` session
@@ -39,8 +48,22 @@ tokey daemon install
    `~/.config/tokey/chrome-profiles/slack/<label>/` so future refreshes reuse
    the existing session
 
-Refreshes run headless -- no browser window appears. The daemon runs
-`tokey refresh --all` periodically to keep tokens fresh before they expire.
+Slack refreshes run headless -- no browser window appears.
+
+### Google
+
+1. `tokey add google` opens your browser to Google's OAuth consent screen
+2. You authorize access to Gmail and Calendar
+3. tokey receives an authorization code and exchanges it for access + refresh tokens
+4. Tokens are saved to `~/.config/tokey/credentials.json`
+5. Access tokens expire hourly but are auto-refreshed using the refresh token
+
+Google refresh happens via API (no browser needed) -- the refresh token is long-lived.
+
+**Note:** tokey uses Thunderbird's public OAuth credentials. If you want to use
+your own, you can create a Google Cloud project and set up OAuth credentials.
+
+The daemon runs `tokey refresh --all` periodically to keep tokens fresh.
 
 ## Commands
 
@@ -67,14 +90,18 @@ tokey daemon status                        # check daemon state + recent logs
 ```bash
 export SLACK_TOKEN=$(tokey get slack -f token)
 export SLACK_COOKIE=$(tokey get slack -f cookie)
+
+# Google access token for IMAP/API
+export GOOGLE_ACCESS_TOKEN=$(tokey get google -f access_token)
 ```
 
 ### Auto-refresh
 
-`get` checks credential age before returning. If credentials are older than the
-provider's max age (30 days for Slack), it runs a headless refresh automatically.
-If the refresh fails, it returns the existing credentials and prints a warning
-to stderr.
+`get` checks credential freshness before returning:
+- **Slack**: If credentials are older than 30 days, runs headless Chrome refresh
+- **Google**: If access token is expired, uses refresh token to get a new one
+
+If refresh fails, existing credentials are returned with a warning to stderr.
 
 ## Daemon Setup
 

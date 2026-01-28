@@ -1,3 +1,4 @@
+pub mod google;
 pub mod slack;
 
 use anyhow::Result;
@@ -17,10 +18,11 @@ pub trait Provider {
 pub fn get_provider(name: &str) -> Result<Box<dyn Provider>> {
     match name {
         "slack" => Ok(Box::new(slack::SlackProvider)),
-        _ => anyhow::bail!("Unknown provider: '{}'. Available: slack", name),
+        "google" => Ok(Box::new(google::GoogleProvider)),
+        _ => anyhow::bail!("Unknown provider: '{}'. Available: slack, google", name),
     }
 }
 
 pub fn all_provider_names() -> &'static [&'static str] {
-    &["slack"]
+    &["slack", "google"]
 }

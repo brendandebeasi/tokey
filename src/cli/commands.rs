@@ -56,17 +56,33 @@ pub fn cmd_get(provider_name: &str, account: Option<&str>, field: Option<&str>) 
     let prov = provider::get_provider(provider_name)?;
     let label = store.resolve_account(provider_name, account)?;
 
-    // Auto-refresh if expired
-    if store
-        .is_expired(provider_name, &label, prov.max_credential_age_days())
-        .unwrap_or(false)
-    {
-        eprintln!(
-            "Credentials for {}/{} are older than {} days -- refreshing...",
-            provider_name,
-            label,
-            prov.max_credential_age_days()
-        );
+    // Check if credentials need refresh
+    let needs_refresh = if provider_name == "google" {
+        // For Google, check if access token is expired based on expires_at
+        store
+            .get_credential(provider_name, &label)
+            .map(|cred| {
+                crate::provider::google::needs_refresh(&cred)
+            })
+            .unwrap_or(false)
+    } else {
+        // For other providers, check credential age
+        store
+            .is_expired(provider_name, &label, prov.max_credential_age_days())
+            .unwrap_or(false)
+    };
+
+    if needs_refresh {
+        if provider_name == "google" {
+            eprintln!("Access token for {}/{} expired -- refreshing...", provider_name, label);
+        } else {
+            eprintln!(
+                "Credentials for {}/{} are older than {} days -- refreshing...",
+                provider_name,
+                label,
+                prov.max_credential_age_days()
+            );
+        }
         match prov.refresh(&store, &label) {
             Ok(new_cred) => {
                 store.update_credential(provider_name, &label, new_cred)?;
