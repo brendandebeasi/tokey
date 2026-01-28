@@ -17,11 +17,25 @@ const REDIRECT_URI: &str = "http://localhost:8484/callback";
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 
-// Available scopes - user chooses which ones they need
+// All scopes we request - grab everything useful for third-party clients
 pub const SCOPE_GMAIL: &str = "https://mail.google.com/";
 pub const SCOPE_CALENDAR: &str = "https://www.googleapis.com/auth/calendar";
 pub const SCOPE_CONTACTS: &str = "https://www.googleapis.com/auth/contacts";
+pub const SCOPE_TASKS: &str = "https://www.googleapis.com/auth/tasks";
+pub const SCOPE_DRIVE: &str = "https://www.googleapis.com/auth/drive";
+pub const SCOPE_YOUTUBE: &str = "https://www.googleapis.com/auth/youtube";
+pub const SCOPE_PHOTOS: &str = "https://www.googleapis.com/auth/photoslibrary";
 pub const SCOPE_USERINFO: &str = "https://www.googleapis.com/auth/userinfo.email";
+
+pub const ALL_SCOPES: &[&str] = &[
+    SCOPE_GMAIL,
+    SCOPE_CALENDAR,
+    SCOPE_CONTACTS,
+    SCOPE_TASKS,
+    SCOPE_DRIVE,
+    SCOPE_YOUTUBE,
+    SCOPE_PHOTOS,
+];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GoogleCredentials {

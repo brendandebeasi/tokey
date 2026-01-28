@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 
-use crate::auth::google_oauth::{self, SCOPE_CALENDAR, SCOPE_GMAIL};
+use crate::auth::google_oauth::{self, ALL_SCOPES};
 use crate::storage::{AuthResult, CredentialStore, StoredCredential};
 
 use super::Provider;
@@ -31,13 +31,10 @@ impl Provider for GoogleProvider {
 
     fn authenticate(&self, _store: &CredentialStore, label: &str) -> Result<AuthResult> {
         eprintln!("Starting Google authentication...");
-        eprintln!("This will request access to Gmail and Calendar.");
+        eprintln!("Requesting access to: Gmail, Calendar, Contacts, Tasks, Drive, YouTube, Photos");
         eprintln!();
 
-        // Request both Gmail and Calendar scopes by default
-        let scopes = &[SCOPE_GMAIL, SCOPE_CALENDAR];
-
-        let creds = google_oauth::authenticate(scopes)?;
+        let creds = google_oauth::authenticate(ALL_SCOPES)?;
 
         eprintln!();
         eprintln!("Successfully authenticated as: {}", creds.email);
